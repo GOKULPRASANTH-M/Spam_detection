@@ -1,0 +1,222 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": []
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "xr_4HqF4G3Jp",
+        "outputId": "f390b660-798f-4928-a9be-7074c5d9d43b"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "[nltk_data] Downloading package stopwords to /root/nltk_data...\n",
+            "[nltk_data]   Unzipping corpora/stopwords.zip.\n",
+            "[nltk_data] Downloading package wordnet to /root/nltk_data...\n"
+          ]
+        }
+      ],
+      "source": [
+        "import pandas as pd\n",
+        "from sklearn.model_selection import train_test_split\n",
+        "from sklearn.feature_extraction.text import TfidfVectorizer\n",
+        "from sklearn.naive_bayes import MultinomialNB\n",
+        "from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score\n",
+        "import string\n",
+        "import nltk\n",
+        "from nltk.corpus import stopwords\n",
+        "from nltk.stem import WordNetLemmatizer\n",
+        "\n",
+        "# Download NLTK data\n",
+        "nltk.download('stopwords')\n",
+        "nltk.download('wordnet')\n",
+        "\n",
+        "# Load dataset\n",
+        "data = pd.read_csv('spam.csv', encoding='latin-1')\n",
+        "data = data[['v1', 'v2']]\n",
+        "data.columns = ['label', 'message']\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Preprocessing function\n",
+        "def preprocess(text):\n",
+        "   text = text.lower()\n",
+        "   text = text.translate(str.maketrans('', '', string.punctuation))\n",
+        "   tokens = text.split()\n",
+        "   tokens = [word for word in tokens if word not in stopwords.words('english')]\n",
+        "   lemmatizer = WordNetLemmatizer()\n",
+        "   tokens = [lemmatizer.lemmatize(word) for word in tokens]\n",
+        "   return ' '.join(tokens)\n",
+        "# Apply preprocessing\n",
+        "data['message'] = data['message'].apply(preprocess)\n",
+        "\n",
+        "# Feature extraction using TF-IDF\n",
+        "tfidf = TfidfVectorizer(max_features=3000)\n",
+        "X = tfidf.fit_transform(data['message']).toarray()\n",
+        "y = data['label'].apply(lambda x: 1 if x == 'spam' else 0)\n",
+        "\n",
+        "# Train-test split\n",
+        "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n",
+        "\n",
+        "# Model training with Naive Bayes\n",
+        "nb_classifier = MultinomialNB()\n",
+        "nb_classifier.fit(X_train, y_train)\n",
+        "y_pred = nb_classifier.predict(X_test)"
+      ],
+      "metadata": {
+        "id": "hZoZvSfcHJOW"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Model evaluation\n",
+        "def evaluate(y_true, y_pred):\n",
+        "    accuracy = accuracy_score(y_true, y_pred)\n",
+        "    precision = precision_score(y_true, y_pred)\n",
+        "    recall = recall_score(y_true, y_pred)\n",
+        "    f1 = f1_score(y_true, y_pred)\n",
+        "    return accuracy, precision, recall, f1\n",
+        "\n",
+        "acc_nb, prec_nb, rec_nb, f1_nb = evaluate(y_test, y_pred)\n",
+        "print(f'Naive Bayes - Accuracy: {acc_nb}, Precision: {prec_nb}, Recall: {rec_nb}, F1-score: {f1_nb}')\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "b-2S6nyfHv4U",
+        "outputId": "a03850ba-10d0-41e0-d912-c10054b588a5"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Naive Bayes - Accuracy: 0.9766816143497757, Precision: 1.0, Recall: 0.8266666666666667, F1-score: 0.9051094890510949\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "**Example 1**"
+      ],
+      "metadata": {
+        "id": "jmD_3SnDItZ8"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Sample input SMS message\n",
+        "input_message = \"Congratulations! You've won a free trip to Hawaii. Claim your prize now!\"\n",
+        "\n",
+        "# Preprocess the input message\n",
+        "preprocessed_input = preprocess(input_message)\n",
+        "\n",
+        "# Convert preprocessed message to TF-IDF vector\n",
+        "input_vector = tfidf.transform([preprocessed_input]).toarray()\n",
+        "\n",
+        "# Predict using the trained Naive Bayes classifier\n",
+        "prediction = nb_classifier.predict(input_vector)\n",
+        "\n",
+        "# Output the prediction\n",
+        "if prediction[0] == 1:\n",
+        "    print(\"The message is classified as SPAM.\")\n",
+        "else:\n",
+        "    print(\"The message is classified as HAM (legitimate).\")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "5kv8cqE4IjsP",
+        "outputId": "5c88fb71-bf33-4fd2-a800-ce0af05487f9"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "The message is classified as SPAM.\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "**Example2**"
+      ],
+      "metadata": {
+        "id": "Dve9LYiUI0-A"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Sample input SMS message\n",
+        "input_message = \"Hey can we have meeting today??\"\n",
+        "\n",
+        "# Preprocess the input message\n",
+        "preprocessed_input = preprocess(input_message)\n",
+        "\n",
+        "# Convert preprocessed message to TF-IDF vector\n",
+        "input_vector = tfidf.transform([preprocessed_input]).toarray()\n",
+        "\n",
+        "# Predict using the trained Naive Bayes classifier\n",
+        "prediction = nb_classifier.predict(input_vector)\n",
+        "\n",
+        "# Output the prediction\n",
+        "if prediction[0] == 1:\n",
+        "    print(\"The message is classified as SPAM.\")\n",
+        "else:\n",
+        "    print(\"The message is classified as HAM (legitimate).\")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "vXOFa9JHJInN",
+        "outputId": "4b41078e-2d36-46b0-8a98-36e8bf05e3d0"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "The message is classified as HAM (legitimate).\n"
+          ]
+        }
+      ]
+    }
+  ]
+}
